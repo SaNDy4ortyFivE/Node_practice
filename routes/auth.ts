@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import {checkToken} from "./middlewares/checkToken"
 
 // import { userSignupValidationRules, validate } from '../validators/signup';
 const { userSignupValidationRules, validate } = require('../validators/signup');
@@ -25,7 +26,7 @@ router.get('/', (req: Request, res: Response, next: NextFunction) => {
 router.put('/signup', userSignupValidationRules(), validate, authController.signup);
 
 // done - Token Part remaining
-router.post('/login', userSigninValidationRules(), validate, authController.signin);
+router.post('/login', userSigninValidationRules(), validate, checkToken, authController.signin);
 
 router.post('/logout', (req: Request, res: Response, next: NextFunction) => {
     console.log('Auth Logout Route');

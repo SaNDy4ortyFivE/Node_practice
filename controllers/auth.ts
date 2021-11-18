@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 
 import e, { NextFunction, Request, Response } from 'express';
 import { IUser } from '../interfaces/user';
-
+import {generateAccessToken, generateRefreshToken} from "./utils/authHelper";
 const { generateOTP, fast2sms } = require('../utils/otp');
 
 const jwt = require('jsonwebtoken');
@@ -39,33 +39,43 @@ exports.signup = async (req: Request, res: Response, next: NextFunction) => {
 
 exports.signin = async (req: Request, res: Response, next: NextFunction) => {
     console.log(req.body);
-    const { phone, password } = req.body;
-    let user = await User.findOne({ phone: phone }).select('+password');
-    if (!user) {
-        return res.status(401).send('Incorrect email or password.');
-    } else {
-        console.log('user ', user);
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
-            return res.status(401).send('Incorrect email or password.');
-        }
-
-        let findal_user = await User.findOne({ phone: phone }).select('-password');
-        if (findal_user) {
-            const payload = {
-                user: {
-                    id: findal_user._id
+    let isAuthorized:boolean = req.body["isAuthorized"];
+    if(!isAuthorized){
+            const { phone, password } = req.body;
+            let user = await User.findOne({ phone: phone }).select('+password');
+            if (!user) {
+                return res.status(401).send('Incorrect email or password.');
+            } else {
+                console.log('user ', user);
+                const validPassword = await bcrypt.compare(password, user.password);
+                if (!validPassword) {
+                    return res.status(401).send('Incorrect email or password.');
                 }
-            };
-            console.log('see success', findal_user);
-            const token = await jwt.sign(payload, process.env.JWT_SECRET, {
-                expiresIn: 17208
-            });
 
-            res.status(200).send({ msg: 'ok', data: [{ user: findal_user, token: token }] });
-        } else {
-            res.status(500).send({ msg: 'Internal server error', data: [] });
-        }
+                let findal_user = await User.findOne({ phone: phone }).select('-password');
+                if (findal_user) {
+                    const payload = {
+                        user: {
+                            id: findal_user._id
+                        }
+                    };
+                    console.log('see success', findal_user);
+
+                    const accessToken = await jwt.sign(payload, process.env.ACCESS_SECRET, {
+                        expiresIn: 17208
+                    });
+
+                    const refreshToken = await jwt.sign(payload, process.env.REFRESH_SECRET, {
+                        expiresIn: 17208
+                    });
+
+                    res.status(200).send({ msg: 'ok', data: [{ user: findal_user, accessToken: accessToken, refreshToken: refreshToken }] });
+                } else {
+                    res.status(500).send({ msg: 'Internal server error', data: [] });
+                }
+            }
+    }else{
+            res.status(200).send({msg:'ok'});
     }
     // res.status(200).send({ msg: 'Successfully Logged in', user: findal_user });
 };
